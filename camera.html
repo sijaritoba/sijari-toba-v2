@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>SIJARI TOBA - Selfie</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #212529;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 20px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.10);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .pegawai {
+      background: #f1f3f5;
+      padding: 12px;
+      border-radius: 10px;
+      line-height: 1.7;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      text-align: center;
+      border-radius: 8px;
+      background: #eee;
+      line-height: 1.5;
+    }
+
+    .success {
+      background: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #842029;
+    }
+
+    #video {
+      display: none;
+      width: 100%;
+      margin-top: 15px;
+      border-radius: 12px;
+      background: black;
+      transform: scaleX(-1);
+    }
+
+    #preview {
+      display: none;
+      width: 100%;
+      margin-top: 15px;
+      border-radius: 12px;
+    }
+
+    #canvas {
+      display: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #btnCamera {
+      background: #0d6efd;
+      color: white;
+    }
+
+    #btnTake {
+      display: none;
+      background: #198754;
+      color: white;
+    }
+
+    #btnRetake {
+      display: none;
+      background: #6c757d;
+      color: white;
+    }
+
+    #btnConfirm {
+      display: none;
+      background: #198754;
+      color: white;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+  <h2>SIJARI TOBA</h2>
+
+  <div class="subtitle">
+    Sistem Jejak Kehadiran Digital<br>
+    Bawaslu Kabupaten Toba
+  </div>
+
+
+  <!-- DATA PEGAWAI -->
+
+  <div class="pegawai">
+
+    <b>NIP:</b>
+    <span id="idPegawai">-</span>
+
+    <br>
+
+    <b>Nama:</b>
+    <span id="namaPegawai">-</span>
+
+    <br>
+
+    <b>Jabatan:</b>
+    <span id="jabatanPegawai">-</span>
+
+    <br>
+
+    <b>Unit:</b>
+    <span id="unitPegawai">-</span>
+
+    <br>
+
+    <b>Jenis:</b>
+    <span id="jenisAbsensi">-</span>
+
+    <br>
+
+    <b>Jarak:</b>
+    <span id="jarakPegawai">-</span> meter
+
+  </div>
+
+
+  <!-- STATUS -->
+
+  <div
+    id="status"
+    class="status">
+
+    Tekan tombol untuk mengaktifkan kamera.
+
+  </div>
+
+
+  <!-- AKTIFKAN KAMERA -->
+
+  <button
+    id="btnCamera"
+    onclick="aktifkanKamera()">
+
+    📷 AKTIFKAN KAMERA
+
+  </button>
+
+
+  <!-- VIDEO -->
+
+  <video
+    id="video"
+    autoplay
+    playsinline
+    muted>
+  </video>
+
+
+  <!-- CANVAS -->
+
+  <canvas id="canvas"></canvas>
+
+
+  <!-- PREVIEW -->
+
+  <img
+    id="preview"
+    alt="Preview selfie">
+
+
+  <!-- AMBIL FOTO -->
+
+  <button
+    id="btnTake"
+    onclick="ambilFoto()">
+
+    📸 AMBIL SELFIE
+
+  </button>
+
+
+  <!-- AMBIL ULANG -->
+
+  <button
+    id="btnRetake"
+    onclick="ambilUlang()">
+
+    🔄 AMBIL ULANG
+
+  </button>
+
+
+  <!-- KONFIRMASI -->
+
+  <button
+    id="btnConfirm"
+    onclick="konfirmasi()">
+
+    ✅ KONFIRMASI SELFIE
+
+  </button>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   VARIABEL
+   ===================================================== */
+
+let cameraStream = null;
+
+let fotoBase64 = null;
+
+let sedangMengirim = false;
+
+
+/* =====================================================
+   URL WEB APP
+   ===================================================== */
+
+const WEB_APP_URL =
+  'https://script.google.com/macros/s/AKfycbwOISOZ3ubUQX1EpxLPx_oxPICy3NNjMfJViY4EVqoMM-s8qCdq0XSmYi_uCTlW26SECg/exec';
+
+
+/* =====================================================
+   PARAMETER URL
+   ===================================================== */
+
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
+
+
+const idPegawai =
+  params.get('idPegawai') || '';
+
+const nama =
+  params.get('nama') || '';
+
+const jabatan =
+  params.get('jabatan') || '';
+
+const unit =
+  params.get('unit') || '';
+
+const jenis =
+  params.get('jenis') || 'MASUK';
+
+const latitude =
+  params.get('latitude') || '';
+
+const longitude =
+  params.get('longitude') || '';
+
+const jarak =
+  params.get('jarak') || '';
+
+const statusGPS =
+  params.get('statusGPS') || 'VALID';
+
+const token =
+  params.get('token') || '';
+
+
+/* =====================================================
+   TAMPILKAN DATA PEGAWAI
+   ===================================================== */
+
+document.getElementById(
+  'idPegawai'
+).textContent =
+  idPegawai;
+
+document.getElementById(
+  'namaPegawai'
+).textContent =
+  nama;
+
+document.getElementById(
+  'jabatanPegawai'
+).textContent =
+  jabatan;
+
+document.getElementById(
+  'unitPegawai'
+).textContent =
+  unit;
+
+document.getElementById(
+  'jenisAbsensi'
+).textContent =
+  jenis;
+
+document.getElementById(
+  'jarakPegawai'
+).textContent =
+  jarak || '-';
+
+
+/* =====================================================
+   STATUS
+   ===================================================== */
+
+function setStatus(
+  message,
+  type
+) {
+
+  const status =
+    document.getElementById(
+      'status'
+    );
+
+  status.innerHTML =
+    message;
+
+  status.className =
+    'status ' +
+    (type || '');
+
+}
+
+
+/* =====================================================
+   AKTIFKAN KAMERA
+   ===================================================== */
+
+async function aktifkanKamera() {
+
+  const btn =
+    document.getElementById(
+      'btnCamera'
+    );
+
+  btn.disabled = true;
+
+  setStatus(
+    'Meminta izin kamera...',
+    ''
+  );
+
+  try {
+
+    if (
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+
+      throw new Error(
+        'Browser tidak mendukung akses kamera.'
+      );
+
+    }
+
+
+    cameraStream =
+      await navigator.mediaDevices.getUserMedia({
+
+        video: {
+
+          facingMode: {
+            ideal: 'user'
+          },
+
+          width: {
+            ideal: 720
+          },
+
+          height: {
+            ideal: 720
+          }
+
+        },
+
+        audio: false
+
+      });
+
+
+    const video =
+      document.getElementById(
+        'video'
+      );
+
+
+    video.srcObject =
+      cameraStream;
+
+
+    await video.play();
+
+
+    video.style.display =
+      'block';
+
+
+    btn.style.display =
+      'none';
+
+
+    document.getElementById(
+      'btnTake'
+    ).style.display =
+      'block';
+
+
+    setStatus(
+      'Kamera aktif. Posisikan wajah Anda.',
+      'success'
+    );
+
+  }
+
+  catch (error) {
+
+    btn.disabled =
+      false;
+
+    setStatus(
+
+      'Kamera tidak dapat dibuka.<br><br>' +
+
+      'Kode: ' +
+      error.name +
+      '<br>' +
+
+      'Pesan: ' +
+      error.message,
+
+      'error'
+
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   AMBIL FOTO
+   ===================================================== */
+
+function ambilFoto() {
+
+  const video =
+    document.getElementById(
+      'video'
+    );
+
+  const canvas =
+    document.getElementById(
+      'canvas'
+    );
+
+
+  if (
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+
+    setStatus(
+      'Kamera belum siap.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  canvas.width =
+    video.videoWidth;
+
+  canvas.height =
+    video.videoHeight;
+
+
+  const context =
+    canvas.getContext(
+      '2d'
+    );
+
+
+  /*
+   * Efek mirror selfie
+   */
+
+  context.translate(
+    canvas.width,
+    0
+  );
+
+  context.scale(
+    -1,
+    1
+  );
+
+
+  context.drawImage(
+    video,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  /*
+   * Ubah menjadi Base64
+   */
+
+  fotoBase64 =
+    canvas.toDataURL(
+      'image/jpeg',
+      0.85
+    );
+
+
+  const preview =
+    document.getElementById(
+      'preview'
+    );
+
+
+  preview.src =
+    fotoBase64;
+
+  preview.style.display =
+    'block';
+
+
+  video.style.display =
+    'none';
+
+
+  document.getElementById(
+    'btnTake'
+  ).style.display =
+    'none';
+
+
+  document.getElementById(
+    'btnRetake'
+  ).style.display =
+    'block';
+
+
+  document.getElementById(
+    'btnConfirm'
+  ).style.display =
+    'block';
+
+
+  hentikanKamera();
+
+
+  setStatus(
+    'Foto berhasil diambil. Silakan periksa sebelum dikirim.',
+    'success'
+  );
+
+}
+
+
+/* =====================================================
+   AMBIL ULANG
+   ===================================================== */
+
+function ambilUlang() {
+
+  fotoBase64 =
+    null;
+
+
+  document.getElementById(
+    'preview'
+  ).style.display =
+    'none';
+
+
+  document.getElementById(
+    'btnRetake'
+  ).style.display =
+    'none';
+
+
+  document.getElementById(
+    'btnConfirm'
+  ).style.display =
+    'none';
+
+
+  document.getElementById(
+    'btnCamera'
+  ).style.display =
+    'block';
+
+
+  document.getElementById(
+    'btnCamera'
+  ).disabled =
+    false;
+
+
+  setStatus(
+    'Tekan AKTIFKAN KAMERA.',
+    ''
+  );
+
+}
+
+
+/* =====================================================
+   KONFIRMASI SELFIE
+   ===================================================== */
+
+function konfirmasi() {
+
+  if (!fotoBase64) {
+
+    setStatus(
+      'Foto belum tersedia.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  if (sedangMengirim) {
+
+    return;
+
+  }
+
+
+  sedangMengirim =
+    true;
+
+
+  const btn =
+    document.getElementById(
+      'btnConfirm'
+    );
+
+
+  btn.disabled =
+    true;
+
+
+  btn.textContent =
+    '⏳ MENYIMPAN ABSENSI...';
+
+
+  setStatus(
+    'Mengirim data absensi...',
+    ''
+  );
+
+
+  /*
+   * FORM POST
+   */
+
+  const form =
+    document.createElement(
+      'form'
+    );
+
+
+  form.method =
+    'POST';
+
+
+  form.action =
+    WEB_APP_URL;
+
+
+  /*
+   * _top membuat browser
+   * berpindah ke halaman hasil
+   */
+
+  form.target =
+    '_top';
+
+
+  form.style.display =
+    'none';
+
+
+  /*
+   * DATA ABSENSI
+   */
+
+  const data = {
+
+    idPegawai:
+      idPegawai,
+
+    nama:
+      nama,
+
+    jabatan:
+      jabatan,
+
+    unit:
+      unit,
+
+    jenis:
+      jenis,
+
+    latitude:
+      latitude,
+
+    longitude:
+      longitude,
+
+    jarak:
+      jarak,
+
+    statusGPS:
+      statusGPS,
+
+    token:
+      token,
+
+    device:
+      navigator.userAgent,
+
+    fotoBase64:
+      fotoBase64
+
+  };
+
+
+  /*
+   * MASUKKAN DATA KE FORM
+   */
+
+  Object.keys(data).forEach(
+    function(key) {
+
+      const input =
+        document.createElement(
+          'input'
+        );
+
+
+      input.type =
+        'hidden';
+
+
+      input.name =
+        key;
+
+
+      input.value =
+        data[key] || '';
+
+
+      form.appendChild(
+        input
+      );
+
+    }
+  );
+
+
+  /*
+   * KIRIM
+   */
+
+  document.body.appendChild(
+    form
+  );
+
+
+  form.submit();
+
+}
+
+
+/* =====================================================
+   MATIKAN KAMERA
+   ===================================================== */
+
+function hentikanKamera() {
+
+  if (!cameraStream) {
+
+    return;
+
+  }
+
+
+  cameraStream
+    .getTracks()
+    .forEach(
+      function(track) {
+
+        track.stop();
+
+      }
+    );
+
+
+  cameraStream =
+    null;
+
+}
+
+</script>
+
+</body>
+
+</html>
